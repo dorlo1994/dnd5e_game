@@ -32,7 +32,7 @@ class UniformDie(BaseDie):
         self._max_val = max_val
 
     def roll(self, min_val=0):
-        return random.randint(min_val, self._max_val)
+        return random.randint(min_val+1, self._max_val)
 
     @property
     def min(self):
