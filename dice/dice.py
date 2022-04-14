@@ -12,12 +12,13 @@ class BaseDie(abc.ABC):
     def roll(self, min_val):
         """
         Rolls the die once.
-        :param min_val:
+        :param min_val: Minimum value of roll (reroll value)
         :return: Result of one roll
         """
         ...
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def min(self):
         ...
 

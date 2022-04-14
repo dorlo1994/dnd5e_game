@@ -1,44 +1,78 @@
+from dice.dice import BaseDie
+
+
+class RollHistory:
+    def __init__(self, limit: int):
+        self._limit = limit
+        self._data = []
+
+    def inset(self, roll: int):
+        if len(self._data) == self._limit:
+            self._data = [roll] + self._data[:-1]
+        else:
+            self._data = [roll] + self._data
+
+    def get_data(self):
+        return self._data.copy()
 
 
 class DiceRoller:
-    def __init__(self):
-        ...
+    """
+    Dice roller class, keeps a history of rolls.
+    """
 
-    def base_roll(self, num, dice) -> int:
+    HISTORY_LIMIT_DEFAULT = 5
+
+    def __init__(self, history_limit: int = HISTORY_LIMIT_DEFAULT):
+        self._history = RollHistory(history_limit)
+
+    def base_roll(self, num: int, die: BaseDie, save_result: bool = True) -> int:
         """
         Rolls <num>d<dice>.
         :param num: Number of rolls
-        :param dice: Dice to roll
+        :param die: Die to roll
+        :param save_result: Set to true to save result in history.
         :return: Sum of rolls
         """
-        return self.roll_keep_reroll(num, dice, num, dice.min - 1)
+        return self.roll_keep_reroll(num, die, num, die.min - 1, save_result)
 
-    def roll_keep_reroll(self, num, dice, keep, min_val) -> int:
+    def roll_keep_reroll(self, num: int, die: BaseDie, keep: int, min_val: int, save_result: bool = True) -> int:
         """
         Rolls <num>d<roll>, keep highest <keep> rolls and reroll on <min_val> or less.
         :param num: Number of rolls
-        :param dice: Dice to roll
+        :param die: Die to roll
         :param keep: Number of highest rolls to keep
         :param min_val: Lowest number to reroll on.
+        :param save_result: Set to true to save result in history.
         :return: Result of roll
         """
-        results = [dice.roll(min_val=min_val) for _ in range(num)]
+        results = [die.roll(min_val=min_val) for _ in range(num)]
         results.sort()
         highest_k = results[0:keep]
-        return sum(highest_k)
+        total = sum(highest_k)
+        if save_result:
+            self._history.inset(total)
+        return total
 
-    def roll_advantage(self, dice):
+    def roll_advantage(self, die: BaseDie) -> int:
         """
         Rolls with advantage.
-        :param dice: Dice to roll
+        :param die: Die to roll
         :return: Max of two rolls.
         """
-        return max(self.base_roll(1, dice), self.base_roll(1, dice))
+        roll = max(self.base_roll(1, die, save_result=False), self.base_roll(1, die, save_result=False))
+        self._history.inset(roll)
+        return roll
 
-    def roll_disadvantage(self, dice):
+    def roll_disadvantage(self, die: BaseDie) -> int:
         """
         Rolls with disadvantage.
-        :param dice: Dice to roll
+        :param die: Die to roll
         :return: Max of two rolls.
         """
-        return min(self.base_roll(1, dice), self.base_roll(1, dice))
+        roll = min(self.base_roll(1, die, save_result=False), self.base_roll(1, die, save_result=False))
+        self._history.inset(roll)
+        return roll
+
+    def get_history(self):
+        return self._history.get_data()
