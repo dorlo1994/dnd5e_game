@@ -30,5 +30,9 @@ def initialize_dice():
     register('uniform', UniformDie)
 
 
-def get_base_dice():
-    return {f'{d}': get_die('uniform', d) for d in BASE_DICE}
+def get_base_dice() -> dict:
+    """
+    Returns a dict containing a set of standard D&D dice:
+    D4, D6, D8, D10, D100 (A.K.A D%), and D20
+    """
+    return {f'{d}': get_die('uniform', d, f'D{d}') for d in BASE_DICE}
