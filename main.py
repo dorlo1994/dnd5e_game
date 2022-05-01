@@ -1,18 +1,17 @@
-from dice import dice_factory, dice_roller
+from dice import dice_factory
+from entity.utils.stats import StandardDiceStatsInitializer, StandardPointBuyStatsInitializer, \
+    StandardArrayStatsInitializer
 
 
 def main():
     dice_factory.initialize_dice()
-    roller = dice_roller.DiceRoller()
-    d = dice_factory.get_base_dice()
+    rand_stats = StandardDiceStatsInitializer()
+    point_buy = StandardPointBuyStatsInitializer([15, 15, 14, 10, 8, 8])
+    standard_array = StandardArrayStatsInitializer([12, 10, 15, 13, 14, 8])
 
-    # EXAMPLE: Making a character randomly
-    stats = ['str', 'dex', 'con', 'int', 'wis', 'cha']
-    for i in range(6):
-        # Roll 4d6, keep highest 3 and reroll on a 1.
-        roll, _ = roller.roll_keep_reroll(4, d['6'], 3, 1)
-        print(f"{stats[i]}:\t{roll}")
-    print(roller.get_history())
+    print(rand_stats.generate())
+    print(point_buy.generate())
+    print(standard_array.generate())
 
 
 if __name__ == '__main__':
