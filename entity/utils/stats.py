@@ -56,24 +56,32 @@ class Stats:
         return repr_str
 
 
-class ValueGenerator:
-    def __init__(self, generator):
-        self.generator = generator
+class AbstractValueGenerator(abc.ABC):
+    @abc.abstractmethod
+    def generate_value(self):
+        ...
+
+
+class ConstantValueGenerator(AbstractValueGenerator):
+    def __init__(self, value):
+        super().__init__()
+        self._value = value
 
     def generate_value(self):
-        return self.generator()
+        return self._value
 
 
-class ConstantValueGenerator(ValueGenerator):
-    def __init__(self, value):
-        def generate_const(): return value
-        super().__init__(generate_const)
-
-
-class RandomValueGenerator(ValueGenerator):
+class RandomValueGenerator(AbstractValueGenerator):
     def __init__(self, roller, dice_count, dice_type, reroll, min_val):
-        def roll(): return roller.roll_keep_reroll(dice_count, dice_type, reroll, min_val)[0]
-        super().__init__(roll)
+        super().__init__()
+        self._roller = roller
+        self._dice_count = dice_count
+        self._dice_type = dice_type
+        self._reroll = reroll
+        self._min_val = min_val
+
+    def generate_value(self):
+        return self._roller.roll_keep_reroll(self._dice_count, self._dice_type, self._reroll, self._min_val)[0]
 
 
 class AbstractStatsInitializer(abc.ABC):
