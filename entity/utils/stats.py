@@ -2,6 +2,7 @@ import abc
 
 from collections import namedtuple
 from dice import dice_factory, dice_roller
+from functools import partial
 
 
 STANDARD_STAT_NAMES = ['str',
@@ -84,89 +85,89 @@ class RandomValueGenerator(AbstractValueGenerator):
         return self._roller.roll_keep_reroll(self._dice_count, self._dice_type, self._reroll, self._min_val)[0]
 
 
+def universal_validator(stats):
+    return True
+
+
+def array_validator(stats, array):
+    expected_array = array.copy()
+    stat_iter = iter(stats)
+    for s in stat_iter:
+        if s.value not in expected_array:
+            raise ValueError(f"Stat value {s.value} not in given array.")
+        expected_array.remove(s.value)
+    return True
+
+
+def cost_validator(stats, costs, total):
+    stat_iter = iter(stats)
+    total_cost = 0
+    for s in stat_iter:
+        cost = costs.get(s.value)
+        if cost is None:
+            raise ValueError(f"Got invalid stat value {s.value}")
+        total_cost += cost
+    if total_cost != total:
+        raise ValueError(f"Total cost is {total_cost}, should be {total}")
+    return True
+
+
 class AbstractStatsInitializer(abc.ABC):
 
     StatGenerator = namedtuple('StatGenerator', ['name', 'value_generator'])
 
-    def __init__(self, names, value_generators):
+    def __init__(self, names, value_generators, validator=universal_validator):
         assert len(names) == len(value_generators), f"Given {len(names)} names but {len(value_generators)} generators!"
         self.generators = [self.StatGenerator(names[i], value_generators[i]) for i in range(len(names))]
+        self.validator = validator
 
-    def _generate(self):
+    def generate(self):
         """
         Iterates over the generators and fixes a value to them.
         :return: A Stats object with the generated stats.
         """
         generated_stats = [Stat(g.name, g.value_generator.generate_value()) for g in self.generators]
+        self.validate(generated_stats)
         return Stats(generated_stats)
 
-    @abc.abstractmethod
-    def generate(self):
-        """
-        Abstract method to wrap _generate(self).
-        :return: A Stats object with the generated stats.
-        """
-        ...
+    def validate(self, stats):
+        self.validator(stats)
 
 
 class StandardDiceStatsInitializer(AbstractStatsInitializer):
-    def __init__(self):
+    def __init__(self, stat_names=None):
+        if not stat_names:
+            stat_names = STANDARD_STAT_NAMES
         roller = dice_roller.DiceRoller()
         d = dice_factory.get_base_dice()
-        generators = [RandomValueGenerator(roller, 4, d['6'], 3, 1)] * len(STANDARD_STAT_NAMES)
-        super().__init__(STANDARD_STAT_NAMES, generators)
-
-    def generate(self):
-        return self._generate()
+        generators = [RandomValueGenerator(roller, 4, d['6'], 3, 1)] * len(stat_names)
+        super().__init__(stat_names, generators)
 
 
 class ArrayStatsInitializer(AbstractStatsInitializer):
-    def __init__(self, values, array):
+    def __init__(self, values, array, stat_names=None):
+        if not stat_names:
+            stat_names = STANDARD_STAT_NAMES
         generators = [ConstantValueGenerator(value) for value in values]
-        self._array = array
-        super().__init__(STANDARD_STAT_NAMES, generators)
-
-    def generate(self):
-        stats = self._generate()
-        expected_array = self._array.copy()
-        stat_iter = iter(stats)
-        for s in stat_iter:
-            if s.value not in expected_array:
-                raise ValueError(f"Stat value {s.value} not in standard array.")
-            expected_array.remove(s.value)
-        return stats
+        validator = partial(array_validator, array=array)
+        super().__init__(stat_names, generators, validator)
 
 
 class StandardArrayStatsInitializer(ArrayStatsInitializer):
 
     STANDARD_ARRAY = [8, 10, 12, 13, 14, 15]
 
-    def __init__(self, values):
-        super().__init__(values, self.STANDARD_ARRAY)
+    def __init__(self, values, stat_names=None):
+        super().__init__(values, self.STANDARD_ARRAY, stat_names)
 
 
 class PointBuyStatsInitializer(AbstractStatsInitializer):
-    def __init__(self, values, stat_costs, stat_total):
+    def __init__(self, values, stat_costs, stat_total, stat_names=None):
+        if not stat_names:
+            stat_names = STANDARD_STAT_NAMES
         generators = [ConstantValueGenerator(value) for value in values]
-        self._stat_costs = stat_costs
-        self._stat_total = stat_total
-        super().__init__(STANDARD_STAT_NAMES, generators)
-
-    def generate(self):
-        """
-        Assuming you have to use ALL available points
-        """
-        stats = self._generate()
-        stat_iter = iter(stats)
-        total_cost = 0
-        for s in stat_iter:
-            cost = self._stat_costs.get(s.value)
-            if cost is None:
-                raise ValueError(f"Got invalid stat value {s.value}")
-            total_cost += cost
-        if total_cost != self._stat_total:
-            raise ValueError(f"Total cost is {total_cost}, should be {self._stat_total}")
-        return stats
+        validator = partial(cost_validator, costs=stat_costs, total=stat_total)
+        super().__init__(stat_names, generators, validator)
 
 
 class StandardPointBuyStatsInitializer(PointBuyStatsInitializer):
@@ -174,5 +175,5 @@ class StandardPointBuyStatsInitializer(PointBuyStatsInitializer):
     STAT_COSTS = {8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9}
     STAT_TOTAL = 27
 
-    def __init__(self, values):
-        super().__init__(values, self.STAT_COSTS, self.STAT_TOTAL)
+    def __init__(self, values, stat_names=None):
+        super().__init__(values, self.STAT_COSTS, self.STAT_TOTAL, stat_names)
