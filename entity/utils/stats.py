@@ -120,17 +120,15 @@ class StandardDiceStatsInitializer(AbstractStatsInitializer):
         return self._generate()
 
 
-class StandardArrayStatsInitializer(AbstractStatsInitializer):
-
-    STANDARD_ARRAY = [8, 10, 12, 13, 14, 15]
-
-    def __init__(self, values):
+class ArrayStatsInitializer(AbstractStatsInitializer):
+    def __init__(self, values, array):
         generators = [ConstantValueGenerator(value) for value in values]
+        self._array = array
         super().__init__(STANDARD_STAT_NAMES, generators)
 
     def generate(self):
         stats = self._generate()
-        expected_array = self.STANDARD_ARRAY.copy()
+        expected_array = self._array.copy()
         stat_iter = iter(stats)
         for s in stat_iter:
             if s.value not in expected_array:
@@ -139,13 +137,19 @@ class StandardArrayStatsInitializer(AbstractStatsInitializer):
         return stats
 
 
-class StandardPointBuyStatsInitializer(AbstractStatsInitializer):
+class StandardArrayStatsInitializer(ArrayStatsInitializer):
 
-    STAT_COSTS = {8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9}
-    STAT_TOTAL = 27
+    STANDARD_ARRAY = [8, 10, 12, 13, 14, 15]
 
     def __init__(self, values):
+        super().__init__(values, self.STANDARD_ARRAY)
+
+
+class PointBuyStatsInitializer(AbstractStatsInitializer):
+    def __init__(self, values, stat_costs, stat_total):
         generators = [ConstantValueGenerator(value) for value in values]
+        self._stat_costs = stat_costs
+        self._stat_total = stat_total
         super().__init__(STANDARD_STAT_NAMES, generators)
 
     def generate(self):
@@ -156,10 +160,19 @@ class StandardPointBuyStatsInitializer(AbstractStatsInitializer):
         stat_iter = iter(stats)
         total_cost = 0
         for s in stat_iter:
-            cost = self.STAT_COSTS.get(s.value)
+            cost = self._stat_costs.get(s.value)
             if cost is None:
                 raise ValueError(f"Got invalid stat value {s.value}")
             total_cost += cost
-        if total_cost != self.STAT_TOTAL:
-            raise ValueError(f"Total cost is {total_cost}, should be {self.STAT_TOTAL}")
+        if total_cost != self._stat_total:
+            raise ValueError(f"Total cost is {total_cost}, should be {self._stat_total}")
         return stats
+
+
+class StandardPointBuyStatsInitializer(PointBuyStatsInitializer):
+
+    STAT_COSTS = {8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9}
+    STAT_TOTAL = 27
+
+    def __init__(self, values):
+        super().__init__(values, self.STAT_COSTS, self.STAT_TOTAL)
