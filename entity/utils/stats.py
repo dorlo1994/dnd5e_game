@@ -2,8 +2,9 @@ import abc
 
 from collections import namedtuple
 
-import dice.dice
-from dice import dice_factory, dice_roller
+from dice.dice import BaseDie
+from dice.dice_factory import get_base_dice
+from dice.dice_roller import DiceRoller
 from functools import partial
 
 
@@ -81,8 +82,7 @@ def constant_value_generator(value: int):
     return value
 
 
-def random_value_generator(roller: dice_roller.DiceRoller, dice_count: int,
-                           dice_type: dice.dice.BaseDie, keep: int, min_val: int):
+def random_value_generator(roller: DiceRoller, dice_count: int, dice_type: BaseDie, keep: int, min_val: int):
     return roller.roll_keep_reroll(dice_count, dice_type, keep, min_val)[0]
 
 # Stats Validators
@@ -180,8 +180,8 @@ class StandardDiceStatsInitializer(DiceStatsInitializer):
     Standard dice rolls for stat rolling: 4D6, keeping the highest 3 as defined in the PHB page 13.
     """
     def __init__(self, stat_names=None):
-        roller = dice_roller.DiceRoller()
-        d = dice_factory.get_base_dice()
+        roller = DiceRoller()
+        d = get_base_dice()
         super().__init__(roller, 4, d['6'], 3, 1, stat_names)
 
 
